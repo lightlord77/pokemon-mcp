@@ -27,6 +27,19 @@ Servidor MCP (Model Context Protocol) que expõe dados ricos de Pokémon — sta
 | `go_get_community_days` | Histórico de Community Days, filtrável por Pokémon |
 | `go_estimate_iv` | Calcula quais combinações de IV (Attack/Defense/Stamina) são compatíveis com o CP e HP observados — mesmo método usado por PokeGenie/GoIV/Calcy IV. Uso típico: cole no chat um print da tela de detalhes do Pokémon (CP, HP e custo de stardust do Power Up); o Claude lê os números via visão e chama a tool. **Não** use a tela de apreciação com as 3 barras — ela só dá uma faixa aproximada por stat, não o valor exato. **Limitação:** só cobre níveis 1–45 (a fonte de dados não tem os multiplicadores de CP acima disso; Pokémon nível 45.5+ de Master League com XL candy/Best Buddy não podem ser calculados) |
 
+## MCP App — Pokédex visual (PokéAPI)
+
+Além das tools de dados acima, o servidor expõe o primeiro **MCP App** do projeto: duas tools que, em hosts com suporte a [MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview) (ex: Claude Desktop), abrem uma interface visual em vez de só retornar JSON.
+
+| Tool | O que faz |
+|---|---|
+| `pokedex_search` | Busca por nome/tipo/geração (mesmos filtros de `search_pokemon`) e mostra os resultados numa grade clicável (sprite, nome, tipos). Clicar num resultado abre o card de detalhe. |
+| `pokedex_view` | Perfil visual de um Pokémon (sprite, tipos, stats em barra, descrição) — chamável direto ou a partir de um clique em `pokedex_search`. |
+
+As duas compartilham um único recurso de UI (`ui://pokedex/mcp-app.html`); `get_pokemon` e `search_pokemon` continuam existindo sem alteração, para quando só uma resposta em texto for necessária.
+
+Em hosts sem suporte a MCP Apps, ambas as tools continuam retornando dados estruturados/texto normalmente — a UI é um complemento, não um requisito.
+
 ## Instalação e build
 
 ```bash

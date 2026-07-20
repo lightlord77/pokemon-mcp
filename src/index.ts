@@ -14,6 +14,9 @@ import { registerGoGetEvolutionTool } from "./tools/go-evolution.js";
 import { registerGoGetRaidBossesTool } from "./tools/go-raids.js";
 import { registerGoGetCommunityDaysTool } from "./tools/go-community-days.js";
 import { registerGoEstimateIvTool } from "./tools/go-iv.js";
+import { registerPokedexUiResource } from "./tools/pokedex-ui.js";
+import { registerPokedexSearchTool } from "./tools/pokedex-search.js";
+import { registerPokedexViewTool } from "./tools/pokedex-view.js";
 
 const server = new McpServer({
   name: "pokemon-mcp",
@@ -36,6 +39,10 @@ registerGoGetEvolutionTool(server);
 registerGoGetRaidBossesTool(server);
 registerGoGetCommunityDaysTool(server);
 registerGoEstimateIvTool(server);
+
+registerPokedexUiResource(server);
+registerPokedexSearchTool(server);
+registerPokedexViewTool(server);
 
 async function main() {
   const transport = new StdioServerTransport();

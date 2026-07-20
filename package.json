@@ -8,7 +8,8 @@
   },
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:ui && tsc",
+    "build:ui": "INPUT=mcp-app.html vite build --config src/ui/pokedex/vite.config.ts",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector node dist/index.js"
@@ -17,12 +18,15 @@
     "dist"
   ],
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite": "^8.1.5",
+    "vite-plugin-singlefile": "^2.3.3"
   },
   "engines": {
     "node": ">=18"

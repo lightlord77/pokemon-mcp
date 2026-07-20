@@ -1,8 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getFullList, getResource } from "../pokeapi-client.js";
 import { jsonResult, runTool } from "../tool-helpers.js";
-import type { Generation, NamedAPIResourceList, PokemonType } from "../types.js";
+import { findMatchingNames } from "../pokemon-search.js";
 
 export function registerSearchPokemonTool(server: McpServer) {
   server.registerTool(
@@ -26,37 +25,9 @@ export function registerSearchPokemonTool(server: McpServer) {
     async ({ query, type, generation, limit }) =>
       runTool(async () => {
         const max = limit ?? 50;
-        let candidateSets: Set<string>[] = [];
-
-        if (type) {
-          const typeData = await getResource<PokemonType>("type", type);
-          candidateSets.push(new Set(typeData.pokemon.map((p) => p.pokemon.name)));
-        }
-
-        if (generation) {
-          const genData = await getResource<Generation>("generation", generation);
-          candidateSets.push(new Set(genData.pokemon_species.map((s) => s.name)));
-        }
-
-        if (query) {
-          const list = await getFullList<NamedAPIResourceList>("pokemon");
-          const needle = query.trim().toLowerCase();
-          candidateSets.push(new Set(list.results.filter((r) => r.name.includes(needle)).map((r) => r.name)));
-        }
-
-        let names: string[];
-        if (candidateSets.length === 0) {
-          const list = await getFullList<NamedAPIResourceList>("pokemon");
-          names = list.results.map((r) => r.name);
-        } else {
-          names = [...candidateSets.reduce((a, b) => new Set([...a].filter((x) => b.has(x))))];
-        }
-
-        names.sort();
-        const total = names.length;
+        const names = await findMatchingNames({ query, type, generation });
         const results = names.slice(0, max);
-
-        return jsonResult({ total_matches: total, returned: results.length, results });
+        return jsonResult({ total_matches: names.length, returned: results.length, results });
       }),
   );
 }

@@ -34,7 +34,9 @@ npm install
 npm run build
 ```
 
-Isso gera `dist/index.js`, o entrypoint do servidor (transporte stdio).
+Isso gera `dist/index.js`, o entrypoint do servidor (transporte stdio), e `src/ui/pokedex/dist/mcp-app.html` (bundle da UI do MCP App).
+
+**Nota sobre versão do Node:** o servidor compilado (`dist/index.js`) roda em Node >=18, conforme `engines.node`. Rodar `npm run build`/`npm run build:ui` localmente, porém, exige Node >=20.19 — é um requisito do Vite (usado só em build-time pra empacotar a UI), não do servidor em si.
 
 ## Testar manualmente
 

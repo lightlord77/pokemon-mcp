@@ -1134,7 +1134,7 @@ Expected: exits 0.
 
 - [ ] **Step 5: Verify the bundled resource content via the same MCP client approach as Task 4**
 
-Write this script to `/tmp/verify-task5.mjs`:
+Write this script to `/Users/gfontes/Documents/projects/pokemon/verify-task5.mjs` (**not** `/tmp` — Node's ESM resolver looks for `node_modules` starting from the script's own directory, not `cwd`, so a script under `/tmp` cannot resolve `@modelcontextprotocol/sdk`; this was discovered during Task 4's execution). Delete the file after running it — it's a throwaway verification script, not a deliverable, and must not be committed.
 
 ```javascript
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -1172,7 +1172,7 @@ await client.close();
 process.exit(0);
 ```
 
-Run: `cd /Users/gfontes/Documents/projects/pokemon && node /tmp/verify-task5.mjs`
+Run: `cd /Users/gfontes/Documents/projects/pokemon && node verify-task5.mjs && rm verify-task5.mjs`
 Expected: `Task 5 OK: UI bundlada contém grid, card e navegação.` (exit code 0, no "FALHOU" lines).
 
 **Note for the human controller (not part of the subagent's task):** this step verifies the bundle's *content*, not its *visual rendering* — no automated test in this plan opens a real MCP Apps host (Claude Desktop or the `ext-apps` reference host), because that requires a GUI no subagent has access to. After Task 6 completes, manually connect this server to an Apps-capable host and visually confirm: `pokedex_search "char"` renders a grid with loading sprites, clicking a result opens the card without a visible host re-render, and `pokedex_view "Pikachu"` opens directly in card mode.
@@ -1217,18 +1217,212 @@ Em hosts sem suporte a MCP Apps, ambas as tools continuam retornando dados estru
 
 - [ ] **Step 2: Run the complete verification suite in order**
 
-Run, in sequence, checking each exits 0 before moving to the next:
+The verification scripts from Tasks 1, 2, 4, and 5 were throwaway (not committed) — recreate them fresh in the project root (Node's ESM resolver needs `node_modules` reachable from the script's own directory, so `/tmp` does not work; this was discovered during Task 4), run each, then delete.
+
+Write `/Users/gfontes/Documents/projects/pokemon/verify-task1.mjs`:
+
+```javascript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["/Users/gfontes/Documents/projects/pokemon/dist/index.js"],
+});
+const client = new Client({ name: "verify-task1", version: "1.0.0" });
+await client.connect(transport);
+
+const result = await client.callTool({ name: "get_pokemon", arguments: { name_or_id: "pikachu" } });
+const profile = JSON.parse(result.content[0].text);
+
+const checks = [
+  [profile.id === 25, `id deveria ser 25, veio ${profile.id}`],
+  [profile.name === "pikachu", `name deveria ser pikachu, veio ${profile.name}`],
+  [profile.types.includes("electric"), `types deveria incluir electric, veio ${JSON.stringify(profile.types)}`],
+  [typeof profile.base_stats.speed === "number", "base_stats.speed deveria ser number"],
+  [profile.sprites.official_artwork !== undefined, "sprites.official_artwork deveria existir"],
+  [profile.evolution_chain_id > 0, "evolution_chain_id deveria ser > 0"],
+];
+
+let failed = false;
+for (const [ok, msg] of checks) {
+  if (!ok) {
+    console.error("FALHOU:", msg);
+    failed = true;
+  }
+}
+
+if (failed) {
+  console.error("Task 1: FALHOU");
+  process.exit(1);
+}
+console.log("Task 1 OK:", profile.name, profile.id, profile.types, "abilities:", profile.abilities.length);
+await client.close();
+process.exit(0);
+```
+
+Write `/Users/gfontes/Documents/projects/pokemon/verify-task2.mjs`:
+
+```javascript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["/Users/gfontes/Documents/projects/pokemon/dist/index.js"],
+});
+const client = new Client({ name: "verify-task2", version: "1.0.0" });
+await client.connect(transport);
+
+const result = await client.callTool({ name: "search_pokemon", arguments: { query: "char", limit: 10 } });
+const data = JSON.parse(result.content[0].text);
+
+const sorted = [...data.results].sort();
+const checks = [
+  [data.results.includes("charmander"), `results deveria incluir charmander, veio ${JSON.stringify(data.results)}`],
+  [data.results.length === data.returned, "returned deveria bater com results.length"],
+  [data.total_matches >= data.returned, "total_matches deveria ser >= returned"],
+  [JSON.stringify(data.results) === JSON.stringify(sorted), "results deveria vir ordenado alfabeticamente"],
+];
+
+let failed = false;
+for (const [ok, msg] of checks) {
+  if (!ok) {
+    console.error("FALHOU:", msg);
+    failed = true;
+  }
+}
+
+if (failed) {
+  console.error("Task 2: FALHOU");
+  process.exit(1);
+}
+console.log("Task 2 OK:", data.total_matches, "matches,", data.results);
+await client.close();
+process.exit(0);
+```
+
+Note: `search_pokemon`'s `limit: 10` (unlike `pokedex_search`) is large enough to include `charmander` even with mega/gmax/regional `char*` forms sorting ahead of it alphabetically — no adjustment needed here, this only affected the tighter default in Task 4's `pokedex_search` script below.
+
+Write `/Users/gfontes/Documents/projects/pokemon/verify-task4.mjs`:
+
+```javascript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["/Users/gfontes/Documents/projects/pokemon/dist/index.js"],
+});
+const client = new Client({ name: "verify-task4", version: "1.0.0" });
+await client.connect(transport);
+
+let failed = false;
+const check = (ok, msg) => {
+  if (!ok) {
+    console.error("FALHOU:", msg);
+    failed = true;
+  }
+};
+
+// pokedex_search
+// limit: 8, not 5 — live PokéAPI data has 6 char-prefixed entries (mega/gmax/regional forms +
+// charcadet/charjabug) sorting alphabetically before charmander (discovered during Task 4).
+const search = await client.callTool({ name: "pokedex_search", arguments: { query: "char", limit: 8 } });
+const searchData = search.structuredContent;
+check(Array.isArray(searchData?.results), "pokedex_search deveria retornar structuredContent.results (array)");
+check(searchData.results.length > 0, "pokedex_search deveria retornar pelo menos 1 resultado pra 'char'");
+check(searchData.results.some((r) => r.name === "charmander"), "resultado deveria incluir charmander");
+check(typeof searchData.results[0].sprite === "string", "cada resultado deveria ter sprite string");
+check(Array.isArray(searchData.results[0].types), "cada resultado deveria ter types array");
+
+// pokedex_search sem resultados
+const emptySearch = await client.callTool({ name: "pokedex_search", arguments: { query: "zzzznotapokemon" } });
+check(
+  Array.isArray(emptySearch.structuredContent?.results) && emptySearch.structuredContent.results.length === 0,
+  "pokedex_search com termo inexistente deveria retornar structuredContent.results: []",
+);
+
+// pokedex_view (válido)
+const view = await client.callTool({ name: "pokedex_view", arguments: { name_or_id: "pikachu" } });
+const viewData = view.structuredContent;
+check(viewData?.pokemon?.id === 25, "pokedex_view(pikachu) deveria retornar pokemon.id === 25");
+check(viewData.pokemon.types.includes("electric"), "pokemon.types deveria incluir electric");
+check(typeof viewData.pokemon.sprite === "string", "pokemon.sprite deveria ser string");
+
+// pokedex_view (inválido)
+const viewInvalid = await client.callTool({ name: "pokedex_view", arguments: { name_or_id: "zzzznotapokemon" } });
+check(viewInvalid.isError === true, "pokedex_view com nome inválido deveria vir com isError: true");
+
+// resource: CSP e conteúdo
+const resource = await client.readResource({ uri: "ui://pokedex/mcp-app.html" });
+const content = resource.contents[0];
+check(content.text.includes('id="root"'), "resource HTML deveria conter o elemento root");
+check(
+  content._meta?.ui?.csp?.resourceDomains?.includes("https://raw.githubusercontent.com"),
+  "resource deveria declarar CSP liberando raw.githubusercontent.com",
+);
+
+if (failed) {
+  console.error("Task 4: FALHOU");
+  process.exit(1);
+}
+console.log("Task 4 OK: pokedex_search, pokedex_view e o resource compartilhado funcionam.");
+await client.close();
+process.exit(0);
+```
+
+Write `/Users/gfontes/Documents/projects/pokemon/verify-task5.mjs`:
+
+```javascript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["/Users/gfontes/Documents/projects/pokemon/dist/index.js"],
+});
+const client = new Client({ name: "verify-task5", version: "1.0.0" });
+await client.connect(transport);
+
+const resource = await client.readResource({ uri: "ui://pokedex/mcp-app.html" });
+const html = resource.contents[0].text;
+
+let failed = false;
+const check = (ok, msg) => {
+  if (!ok) {
+    console.error("FALHOU:", msg);
+    failed = true;
+  }
+};
+
+check(html.includes("grid-item"), "HTML bundlado deveria conter a classe grid-item");
+check(html.includes("card"), "HTML bundlado deveria conter a classe card");
+check(html.includes("callServerTool"), "HTML bundlado deveria conter a chamada callServerTool (navegação grid->card)");
+check(!html.includes('src="./src/mcp-app.ts"'), "HTML bundlado NÃO deveria referenciar o .ts fonte solto — deve estar tudo inline (single-file)");
+
+if (failed) {
+  console.error("Task 5: FALHOU");
+  process.exit(1);
+}
+console.log("Task 5 OK: UI bundlada contém grid, card e navegação.");
+await client.close();
+process.exit(0);
+```
+
+Run, in sequence, checking each exits 0 before moving to the next, then delete all four scripts (they are throwaway, not deliverables — do not commit them):
 
 ```bash
 cd /Users/gfontes/Documents/projects/pokemon
 npm run build
-node /tmp/verify-task1.mjs
-node /tmp/verify-task2.mjs
-node /tmp/verify-task4.mjs
-node /tmp/verify-task5.mjs
+node verify-task1.mjs
+node verify-task2.mjs
+node verify-task4.mjs
+node verify-task5.mjs
+rm verify-task1.mjs verify-task2.mjs verify-task4.mjs verify-task5.mjs
 ```
 
-Expected: all four scripts print their respective `Task N OK: ...` line and the command sequence exits 0 with no `FALHOU` output anywhere.
+Expected: all four scripts print their respective `Task N OK: ...` line and the command sequence exits 0 with no `FALHOU` output anywhere. Also check `git status` afterward — no `verify-task*.mjs` files should remain, tracked or untracked.
 
 - [ ] **Step 3: Confirm the 15 existing tools still register correctly (no regression)**
 

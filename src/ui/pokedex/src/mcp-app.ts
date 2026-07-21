@@ -27,6 +27,23 @@ interface ViewPokemon {
 const rootEl = document.getElementById("root")!;
 const MAX_BASE_STAT = 255; // teto oficial de base stat na PokéAPI — usado só pra escalar a barra visualmente
 
+// Guarda o último grid renderizado (via busca) pra permitir "voltar" a partir de um card ou de um erro.
+// Continua null se pokedex_view foi chamado direto (sem passar por pokedex_search) — nesse caso não há pra onde voltar.
+let lastGrid: SearchResultItem[] | null = null;
+
+/** Cria o botão "← Voltar" que re-renderiza o último grid. Retorna null se não há grid anterior. */
+function createBackButton(): HTMLElement | null {
+  if (!lastGrid) return null;
+  const grid = lastGrid;
+  const button = document.createElement("button");
+  button.className = "back-button";
+  button.textContent = "← Voltar";
+  button.addEventListener("click", () => {
+    renderGrid(grid);
+  });
+  return button;
+}
+
 /** Creates an <img>; if the sprite is missing or fails to load, swaps in a text placeholder instead. */
 function createSpriteElement(src: string | null, alt: string): HTMLElement {
   if (!src) {
@@ -58,11 +75,20 @@ function renderEmpty(message: string) {
 }
 
 function renderError(message: string) {
-  rootEl.innerHTML = `<div class="error"></div>`;
-  rootEl.querySelector(".error")!.textContent = message;
+  rootEl.innerHTML = "";
+
+  const backButton = createBackButton();
+  if (backButton) rootEl.appendChild(backButton);
+
+  const error = document.createElement("div");
+  error.className = "error";
+  error.textContent = message;
+  rootEl.appendChild(error);
 }
 
 function renderGrid(results: SearchResultItem[]) {
+  lastGrid = results;
+
   if (results.length === 0) {
     renderEmpty("Nenhum Pokémon encontrado.");
     return;
@@ -93,6 +119,10 @@ function renderGrid(results: SearchResultItem[]) {
 
 function renderCard(pokemon: ViewPokemon) {
   rootEl.innerHTML = "";
+
+  const backButton = createBackButton();
+  if (backButton) rootEl.appendChild(backButton);
+
   const card = document.createElement("div");
   card.className = "card";
 
@@ -108,6 +138,15 @@ function renderCard(pokemon: ViewPokemon) {
     badge.className = "type-badge";
     badge.textContent = t;
     typesEl.appendChild(badge);
+  }
+
+  const abilitiesEl = document.createElement("div");
+  abilitiesEl.className = "abilities";
+  for (const ability of pokemon.abilities) {
+    const badge = document.createElement("span");
+    badge.className = "ability-badge";
+    badge.textContent = ability.is_hidden ? `${ability.name} (oculta)` : ability.name;
+    abilitiesEl.appendChild(badge);
   }
 
   const statsEl = document.createElement("div");
@@ -126,6 +165,18 @@ function renderCard(pokemon: ViewPokemon) {
   card.appendChild(sprite);
   card.appendChild(h2);
   card.appendChild(typesEl);
+
+  if (pokemon.evolves_from) {
+    const evolution = document.createElement("p");
+    evolution.className = "evolution";
+    evolution.textContent = `Evolui de ${pokemon.evolves_from}`;
+    card.appendChild(evolution);
+  }
+
+  if (pokemon.abilities.length > 0) {
+    card.appendChild(abilitiesEl);
+  }
+
   card.appendChild(statsEl);
 
   if (pokemon.pokedex_description) {

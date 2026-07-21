@@ -14,7 +14,6 @@
       }
       .grid-item:hover { background: #f2f2f2; }
       .grid-item img { width: 64px; height: 64px; image-rendering: pixelated; }
-      .grid-item img.sprite-missing, .card img.sprite-missing { visibility: hidden; }
       .grid-item span { font-size: 12px; text-transform: capitalize; }
       .card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; }
       .card img { width: 160px; height: 160px; }
@@ -29,11 +28,21 @@
       .type-badge {
         font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #e0e0e0; text-transform: capitalize;
       }
+      .evolution { margin: 0; font-size: 12px; color: #666; }
+      .abilities { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+      .ability-badge {
+        font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #d8e8f5; text-transform: capitalize;
+      }
       .stats { width: 100%; max-width: 280px; display: flex; flex-direction: column; gap: 4px; }
       .stat-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
       .stat-row .label { width: 90px; text-transform: capitalize; }
       .stat-row .bar { flex: 1; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
       .stat-row .bar-fill { height: 100%; background: #4a90d9; }
+      .back-button {
+        display: block; margin-bottom: 8px; font-size: 12px; padding: 4px 10px;
+        border: 1px solid #ddd; border-radius: 6px; background: none; cursor: pointer;
+      }
+      .back-button:hover { background: #f2f2f2; }
     </style>
   </head>
   <body>
